@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!-- saved from url=(0059)file:///Users/wangyu/Downloads/screen_stare_experiment.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention Capture Study</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --font-mono: 'Courier New', Courier, monospace; }
+  body { background: #000; font-family: var(--font-mono); }
+  @keyframes scan{0%{top:0}100%{top:100%}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  @keyframes popIn{0%{transform:translate(-50%,-50%) scale(0.1) rotate(-3deg);opacity:0}55%{transform:translate(-50%,-50%) scale(1.05) rotate(0.4deg);opacity:1}100%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:1}}
+  @keyframes fadeOut{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.85)}}
+  @keyframes redPulse{0%,100%{background:rgba(160,0,0,0.15)}50%{background:rgba(210,0,0,0.3)}}
+  @keyframes borderBlink{0%,100%{opacity:1}50%{opacity:0.4}}
+  @keyframes countUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div id="app" style="min-height:100vh;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;box-sizing:border-box;font-family:var(--font-mono);overflow:hidden;transition:background 0.3s;">
+
+  <!-- INTRO -->
+  <div id="intro" style="text-align:center;color:#fff;max-width:500px;">
+    <div style="font-size:11px;color:#550000;letter-spacing:0.14em;margin-bottom:1.5rem;">ATTENTION CAPTURE STUDY // v5.0</div>
+    <h1 style="font-size:28px;font-weight:500;margin:0 0 1.2rem;color:#fff;line-height:1.4;">Can you keep looking at<br>this screen for 30 seconds?</h1>
+    <p style="font-size:14px;color:#cc3333;line-height:1.9;margin-bottom:2.5rem;">Please do not look away.</p>
+    <button onclick="startExperiment()" style="background:#cc0000;color:#fff;border:none;padding:13px 42px;font-size:13px;font-family:var(--font-mono);cursor:pointer;letter-spacing:0.06em;">Start Experiment</button>
+    <p style="font-size:11px;color:#2a2a2a;margin-top:1rem;">Camera access required · Chrome recommended</p>
+  </div>
+
+  <!-- EXPERIMENT -->
+  <div id="experiment" style="display:none;width:100%;max-width:560px;text-align:center;">
+    <div style="font-size:10px;color:#440000;letter-spacing:0.14em;margin-bottom:1.5rem;">RECORDING // GAZE TRACKING ACTIVE</div>
+    <div style="position:relative;width:160px;height:160px;margin:0 auto 1.5rem;border-radius:50%;overflow:hidden;border:1px solid #220000;">
+      <video id="video" autoplay="" playsinline="" muted="" style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:grayscale(1) brightness(0.5);"></video>
+      <canvas id="overlay" width="160" height="160" style="position:absolute;top:0;left:0;transform:scaleX(-1);"></canvas>
+      <div style="position:absolute;top:0;left:0;width:100%;height:3px;background:rgba(255,30,30,0.25);animation:scan 1.5s linear infinite;"></div>
+    </div>
+    <div style="font-size:11px;color:#440000;margin-bottom:0.3rem;letter-spacing:0.08em;">FOCUS DURATION</div>
+    <div id="timerDisplay" style="font-size:44px;font-weight:500;color:#fff;margin-bottom:1rem;">0.0s</div>
+    <div style="background:#0d0000;border-radius:2px;height:6px;width:100%;margin-bottom:0.3rem;overflow:hidden;border:0.5px solid #330000;">
+      <div id="progressBar" style="height:100%;width:0%;background:#cc0000;transition:width 0.1s linear;border-radius:2px;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#330000;margin-bottom:1.5rem;"><span>0s</span><span>15s</span><span>30s</span></div>
+    <div id="statusDot" style="display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#0f0;">
+      <span id="dotCircle" style="width:7px;height:7px;border-radius:50%;background:#0f0;display:inline-block;animation:pulse 1s ease-in-out infinite;"></span>
+      <span id="statusText">Initializing…</span>
+    </div>
+    <div id="gazeDebug" style="font-size:10px;color:#2a2a2a;margin-top:0.4rem;height:14px;"></div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="success" style="display:none;text-align:center;color:#fff;max-width:560px;position:relative;z-index:10;padding:1rem 0 3rem;">
+    <div style="font-size:13px;color:#ffcc00;letter-spacing:0.14em;margin-bottom:0.8rem;">YOU MADE IT</div>
+    <p style="font-size:26px;font-weight:500;margin:0 0 2.5rem;line-height:1.5;">30 seconds.<br>That's all it took.</p>
+    <div id="distractCount" style="margin-bottom:2.5rem;"></div>
+    <div style="width:100%;height:0.5px;background:#1a1a1a;margin-bottom:2.5rem;"></div>
+    <p style="font-size:20px;color:#666;line-height:1.9;margin-bottom:1rem;">The global average person spends<br><span style="font-size:38px;color:#cc9900;font-weight:500;">2.5 hours</span><br>per day watching short-form video.</p>
+    <p style="font-size:20px;color:#555;line-height:1.9;margin-bottom:1rem;">That's<br><span style="font-size:38px;color:#cc9900;font-weight:500;">300 sessions</span><br>of 30 seconds. Back to back.<br>Every single day.</p>
+    <p style="font-size:20px;color:#444;line-height:1.9;margin-bottom:2rem;">Without noticing,<br>countless 30-second windows<br>have already passed.</p>
+    <p style="font-size:18px;color:#333;line-height:1.9;margin-bottom:2.5rem;font-style:italic;">The feed doesn't pause.<br>It never will.<br>That's by design.</p>
+    <button onclick="resetExperiment()" style="background:transparent;color:#444;border:0.5px solid #222;padding:12px 28px;font-size:13px;font-family:var(--font-mono);cursor:pointer;">Try again</button>
+  </div>
+</div>
+
+<div id="redVeil" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;background:rgba(180,0,0,0);transition:background 0.2s;"></div>
+<div id="errorContainer" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;"></div>
+<canvas id="confetti" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:997;display:none;"></canvas>
+
+<script src="./assets/face_mesh.js"></script>
+<script>
+const TOTAL=30,YAW_THRESH=16,PITCH_THRESH=14;
+let stream,animFrame,startTime,elapsed=0,running=false,faceMesh,detRunning=false;
+let gazeOk=true,errorCards=[],spawning=false,spawnInterval=null,cardCount=0,distractions=0;
+
+const errorMsgs=[
+  ["TARGET LOST","Gaze deviation detected","Tracking signal: INTERRUPTED"],
+  ["TARGET LOST","Subject looked away","Attention lock: BROKEN"],
+  ["TARGET LOST","Eye contact lost","Session continuity: 0%"],
+  ["TARGET LOST","Head rotation detected","Realignment required"],
+  ["TARGET LOST","Focus signal dropped","Progress suspended"],
+  ["TARGET LOST","Distraction recorded","Engagement score: CRITICAL"],
+  ["TARGET LOST","Gaze lock disengaged","Please return your gaze"],
+  ["TARGET LOST","Attention interrupted","The feed will not wait"],
+  ["TARGET LOST","Subject is distracted","Algorithm has noticed"],
+];
+
+async function startExperiment(){
+  distractions=0;
+  document.getElementById('intro').style.display='none';
+  document.getElementById('experiment').style.display='block';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
+    const vid=document.getElementById('video');
+    vid.srcObject=stream;
+    await new Promise(r=>vid.onloadedmetadata=r);
+    await initFaceMesh(vid);
+  }catch(e){setStatus(false,'Camera unavailable — check permissions');}
+}
+
+async function initFaceMesh(vid){
+  if(!window.FaceMesh){setStatus(false,'FaceMesh failed to load');return;}
+  faceMesh=new FaceMesh({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}`});
+  faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+  faceMesh.onResults(onResults);
+  detRunning=true;
+  setStatus(true,'FACE DETECTED — TRACKING');
+  detectLoop(vid);
+  beginTracking();
+}
+
+async function detectLoop(vid){
+  if(!detRunning)return;
+  try{await faceMesh.send({image:vid});}catch(e){}
+  setTimeout(()=>detectLoop(vid),80);
+}
+
+function onResults(res){
+  const canvas=document.getElementById('overlay');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,160,160);
+  if(!res.multiFaceLandmarks||res.multiFaceLandmarks.length===0){handleGazeLost();return;}
+  const lm=res.multiFaceLandmarks[0];
+  const nose=lm[1],leftCheek=lm[234],rightCheek=lm[454];
+  const faceW=Math.abs(rightCheek.x-leftCheek.x);
+  const faceCenterX=(leftCheek.x+rightCheek.x)/2;
+  const yawDeg=((nose.x-faceCenterX)/faceW)*90;
+  const chin=lm[152],forehead=lm[10];
+  const faceH=Math.abs(chin.y-forehead.y);
+  const faceCenterY=(chin.y+forehead.y)/2;
+  const pitchDeg=((nose.y-faceCenterY)/faceH)*90;
+  const ok=Math.abs(yawDeg)<YAW_THRESH&&Math.abs(pitchDeg)<PITCH_THRESH;
+  ctx.beginPath();
+  ctx.arc(nose.x*160,nose.y*160,5,0,Math.PI*2);
+  ctx.fillStyle=ok?'rgba(0,255,80,0.9)':'rgba(255,40,40,0.95)';
+  ctx.fill();
+  document.getElementById('gazeDebug').textContent=`yaw: ${yawDeg.toFixed(1)}°  pitch: ${pitchDeg.toFixed(1)}°`;
+  if(!ok)handleGazeLost();else handleGazeGood();
+}
+
+function handleGazeLost(){
+  if(!gazeOk)return;
+  gazeOk=false;running=false;distractions++;
+  cancelAnimationFrame(animFrame);
+  setStatus(false,'TARGET LOST — ALERT');
+  document.getElementById('redVeil').style.background='rgba(180,0,0,0.18)';
+  document.getElementById('redVeil').style.animation='redPulse 0.45s ease infinite';
+  document.getElementById('app').style.background='#0a0000';
+  startSpawning();
+}
+
+function handleGazeGood(){
+  if(gazeOk)return;
+  gazeOk=true;
+  setStatus(true,'FACE DETECTED — TRACKING');
+  stopSpawning();
+  document.getElementById('redVeil').style.animation='none';
+  document.getElementById('redVeil').style.background='rgba(180,0,0,0)';
+  document.getElementById('app').style.background='#000';
+  fadeAllCards(()=>beginTracking());
+}
+
+function startSpawning(){
+  if(spawning)return;
+  spawning=true;
+  spawnCard();spawnCard();
+  spawnInterval=setInterval(()=>{if(spawning)spawnCard();},300);
+}
+
+function stopSpawning(){spawning=false;clearInterval(spawnInterval);}
+
+function spawnCard(){
+  const container=document.getElementById('errorContainer');
+  const msg=errorMsgs[Math.floor(Math.random()*errorMsgs.length)];
+  const roll=Math.random();
+  const big=roll>0.55,med=roll>0.25;
+  const w=big?350:med?250:175;
+  const pad=big?'18px 22px':med?'14px 17px':'10px 13px';
+  const f0=big?16:med?13:11,f1=big?13:med?11:10,f2=big?11:med?10:9;
+  const x=5+Math.random()*90,y=5+Math.random()*90;
+  const rot=(Math.random()-0.5)*4;
+  const card=document.createElement('div');
+  card.style.cssText=`position:fixed;left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${rot}deg);width:${w}px;background:#050000;border:1.5px solid #ff2222;padding:${pad};pointer-events:none;animation:popIn 0.26s cubic-bezier(0.34,1.4,0.64,1) forwards;z-index:${1000+cardCount++};box-shadow:0 0 24px rgba(255,0,0,0.2),inset 0 0 14px rgba(160,0,0,0.1);`;
+  card.innerHTML=`
+    <div style="color:#ff2222;font-size:${f0}px;letter-spacing:0.08em;margin-bottom:7px;font-weight:500;">${msg[0]}</div>
+    <div style="color:#ff8888;font-size:${f1}px;margin-bottom:5px;">${msg[1]}</div>
+    <div style="color:#662222;font-size:${f2}px;line-height:1.6;">${msg[2]}</div>
+    ${big?`<div style="margin-top:10px;height:2px;background:#1a0000;overflow:hidden;border-radius:1px;"><div style="height:100%;width:${Math.round(20+Math.random()*70)}%;background:#cc0000;animation:borderBlink 0.5s ease infinite;"></div></div>`:''}
+  `;
+  container.appendChild(card);
+  errorCards.push(card);
+  if(errorCards.length>32){const old=errorCards.shift();old.remove();}
+}
+
+function fadeAllCards(cb){
+  const cards=[...errorCards];errorCards=[];
+  if(!cards.length){cb&&cb();return;}
+  let done=0;
+  cards.forEach((c,i)=>{
+    setTimeout(()=>{
+      c.style.animation='fadeOut 0.7s ease forwards';
+      setTimeout(()=>{c.remove();done++;if(done===cards.length)cb&&cb();},700);
+    },i*120);
+  });
+}
+
+function beginTracking(){
+  if(running)return;
+  running=true;
+  startTime=Date.now()-elapsed*1000;
+  tick();
+}
+
+function tick(){
+  if(!running)return;
+  elapsed=(Date.now()-startTime)/1000;
+  if(elapsed>=TOTAL){completeExperiment();return;}
+  const pct=(elapsed/TOTAL)*100;
+  document.getElementById('progressBar').style.width=pct+'%';
+  document.getElementById('timerDisplay').textContent=elapsed.toFixed(1)+'s';
+  const r=Math.round(180+(elapsed/TOTAL)*75),g=Math.round(30-(elapsed/TOTAL)*30);
+  document.getElementById('progressBar').style.background=`rgb(${r},${g},0)`;
+  animFrame=requestAnimationFrame(tick);
+}
+
+function setStatus(ok,msg){
+  const circle=document.getElementById('dotCircle');
+  const text=document.getElementById('statusText');
+  const dot=document.getElementById('statusDot');
+  circle.style.background=ok?'#0f0':'#ff2222';
+  circle.style.animation=ok?'pulse 1s ease-in-out infinite':'none';
+  dot.style.color=ok?'#0f0':'#ff3333';
+  text.textContent=msg;
+}
+
+function completeExperiment(){
+  running=false;detRunning=false;spawning=false;
+  clearInterval(spawnInterval);cancelAnimationFrame(animFrame);
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  fadeAllCards();
+  document.getElementById('redVeil').style.animation='none';
+  document.getElementById('redVeil').style.background='';
+  document.getElementById('app').style.background='#000';
+
+  const d=distractions;
+  const el=document.getElementById('distractCount');
+  if(d===0){
+    el.innerHTML=`
+      <div style="font-size:16px;color:#888;letter-spacing:0.06em;margin-bottom:0.5rem;">TIMES YOU LOOKED AWAY</div>
+      <div style="font-size:120px;font-weight:500;color:#ffcc00;line-height:1;margin-bottom:0.4rem;animation:countUp 0.6s ease forwards;">0</div>
+      <div style="font-size:20px;color:#555;margin-top:0.3rem;">Remarkable. Most people can't.</div>`;
+  } else {
+    el.innerHTML=`
+      <div style="font-size:16px;color:#888;letter-spacing:0.06em;margin-bottom:0.5rem;">IN JUST 30 SECONDS, YOU LOOKED AWAY</div>
+      <div style="font-size:120px;font-weight:500;color:#ff3333;line-height:1;margin-bottom:0.2rem;animation:countUp 0.6s ease forwards;">${d}</div>
+      <div style="font-size:26px;color:#cc4444;margin-bottom:0.4rem;">time${d>1?'s':''}</div>
+      <div style="font-size:18px;color:#442222;">and you were <em>trying</em>.</div>`;
+  }
+
+  setTimeout(()=>{
+    document.getElementById('experiment').style.display='none';
+    document.getElementById('success').style.display='block';
+    launchConfetti();
+  },300);
+}
+
+function launchConfetti(){
+  const canvas=document.getElementById('confetti');
+  canvas.style.display='block';
+  const W=window.innerWidth,H=window.innerHeight;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const colors=['#ffcc00','#ff6666','#66ccff','#99ff66','#ff99cc','#ffffff','#ffaa33'];
+  const particles=Array.from({length:160},()=>({
+    x:Math.random()*W,y:-10-Math.random()*H*0.3,
+    w:6+Math.random()*10,h:3+Math.random()*5,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    vx:(Math.random()-0.5)*4,vy:2+Math.random()*4,
+    rot:Math.random()*360,rotV:(Math.random()-0.5)*6,alpha:1
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    let alive=false;
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.rotV;
+      if(frame>180)p.alpha=Math.max(0,p.alpha-0.015);
+      if(p.y<H+20)alive=true;
+      ctx.save();ctx.globalAlpha=p.alpha;
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    });
+    frame++;
+    if(alive&&frame<300)requestAnimationFrame(draw);
+    else{ctx.clearRect(0,0,W,H);canvas.style.display='none';}
+  }
+  draw();
+}
+
+function resetExperiment(){
+  elapsed=0;running=false;gazeOk=true;spawning=false;cardCount=0;distractions=0;
+  errorCards=[];
+  document.getElementById('errorContainer').innerHTML='';
+  document.getElementById('confetti').style.display='none';
+  document.getElementById('redVeil').style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;background:rgba(180,0,0,0);transition:background 0.2s;';
+  document.getElementById('app').style.background='#000';
+  document.getElementById('success').style.display='none';
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('timerDisplay').textContent='0.0s';
+  document.getElementById('intro').style.display='block';
+}
+</script>
+
+
+</body></html>
